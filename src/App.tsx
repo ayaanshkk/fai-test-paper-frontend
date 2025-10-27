@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import './App.css';
 
 interface QuestionDetail {
-  question_number: number;
+  question_number: string | number;
   student_answer: string;
   correct_answer: string;
   is_correct: boolean;
@@ -26,33 +25,43 @@ interface GradingResult {
   details: QuestionDetail[];
 }
 
+interface ExtractedData {
+  mhe_type: string;
+  participant_name: string;
+  company: string;
+  date: string;
+  place: string;
+  test_type: string;
+  total_questions: number;
+  answers: Record<string, string>;
+  image_base64: string;
+}
+
 const App: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GradingResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [fileType, setFileType] = useState<string>('');
+  
+  // Manual review states
+  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
+  const [showReview, setShowReview] = useState(false);
+  const [editedAnswers, setEditedAnswers] = useState<Record<string, string>>({});
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      setFileType(file.type);
-      
-      // Only show preview for images, not PDFs
-      if (file.type.startsWith('image/')) {
-        setPreviewUrl(URL.createObjectURL(file));
-      } else {
-        setPreviewUrl(null);
-      }
-      
+      setPreviewUrl(URL.createObjectURL(file));
       setResult(null);
       setError(null);
+      setShowReview(false);
+      setExtractedData(null);
     }
   };
 
-  const handleUpload = async () => {
+  const handleExtractAnswers = async () => {
     if (!selectedFile) {
       setError('Please select a file first');
       return;
@@ -65,19 +74,46 @@ const App: React.FC = () => {
     formData.append('file', selectedFile);
 
     try {
-      const response = await axios.post<GradingResult>(
-        'http://localhost:8000/api/grade-test',
+      const response = await axios.post<ExtractedData>(
+        'http://localhost:8000/api/extract-answers',
         formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      setExtractedData(response.data);
+      setEditedAnswers(response.data.answers);
+      setShowReview(true);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Error extracting answers');
+      console.error('Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAnswerChange = (questionKey: string, value: string) => {
+    setEditedAnswers(prev => ({ ...prev, [questionKey]: value }));
+  };
+
+  const handleSubmitWithCorrections = async () => {
+    if (!extractedData) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.post<GradingResult>(
+        'http://localhost:8000/api/grade-with-corrections',
         {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+          extracted_data: extractedData,
+          corrected_answers: editedAnswers
         }
       );
 
       setResult(response.data);
+      setShowReview(false);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Error grading test. Please try again.');
+      setError(err.response?.data?.detail || 'Error grading test');
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -89,18 +125,30 @@ const App: React.FC = () => {
     setPreviewUrl(null);
     setResult(null);
     setError(null);
-    setFileType('');
+    setShowReview(false);
+    setExtractedData(null);
+  };
+
+  const getQuestionNumbers = () => {
+    if (!extractedData) return [];
+    return Object.keys(extractedData.answers).sort((a, b) => {
+      // Sort properly: 1a, 1b, 1c, 1d, 1e, 2, 3...
+      const aNum = parseInt(a.replace(/[^0-9]/g, ''));
+      const bNum = parseInt(b.replace(/[^0-9]/g, ''));
+      if (aNum !== bNum) return aNum - bNum;
+      return a.localeCompare(b);
+    });
   };
 
   return (
     <div className="app">
       <header className="header">
         <h1>🎓 MHE Test Grading System</h1>
-        <p>Automated grading for Forklift Academy safety tests</p>
+        <p>Automated grading with manual review for Forklift Academy tests</p>
       </header>
 
       <div className="container">
-        {!result ? (
+        {!showReview && !result && (
           <div className="upload-section">
             <div className="upload-box">
               <input
@@ -114,28 +162,24 @@ const App: React.FC = () => {
                 <div className="upload-icon">📄</div>
                 <p>Click to upload or drag and drop</p>
                 <p className="upload-hint">Supported: JPG, PNG, PDF</p>
-                <p className="upload-hint">Scanned papers, photos, or PDF copies</p>
               </label>
             </div>
 
-            {(selectedFile) && (
+            {previewUrl && (
               <div className="preview-section">
-                <h3>Selected File</h3>
-                
-                {previewUrl ? (
-                  <img src={previewUrl} alt="Test paper preview" className="preview-image" />
-                ) : (
+                <h3>Preview</h3>
+                {selectedFile?.type === 'application/pdf' ? (
                   <div className="pdf-preview">
                     <div className="pdf-icon">📄</div>
-                    <p><strong>{selectedFile.name}</strong></p>
                     <p className="file-type">PDF Document</p>
-                    <p className="file-size">{(selectedFile.size / 1024).toFixed(2)} KB</p>
+                    <p className="file-size">{selectedFile.name}</p>
                   </div>
+                ) : (
+                  <img src={previewUrl} alt="Test paper preview" className="preview-image" />
                 )}
-                
                 <div className="button-group">
-                  <button onClick={handleUpload} disabled={loading} className="btn btn-primary">
-                    {loading ? 'Processing...' : 'Grade Test Paper'}
+                  <button onClick={handleExtractAnswers} disabled={loading} className="btn btn-primary">
+                    {loading ? 'Extracting...' : 'Extract & Review Answers'}
                   </button>
                   <button onClick={handleReset} className="btn btn-secondary">
                     Cancel
@@ -150,7 +194,76 @@ const App: React.FC = () => {
               </div>
             )}
           </div>
-        ) : (
+        )}
+
+        {showReview && extractedData && (
+          <div className="review-section">
+            <div className="review-header">
+              <h2>📝 Review & Correct AI Extraction</h2>
+              <p>Check the extracted answers and correct any mistakes before grading</p>
+            </div>
+
+            <div className="review-container">
+              <div className="image-panel">
+                <h3>Original Test Paper</h3>
+                <img 
+                  src={`data:image/jpeg;base64,${extractedData.image_base64}`} 
+                  alt="Test paper" 
+                  className="review-image"
+                />
+              </div>
+
+              <div className="answers-panel">
+                <div className="info-section">
+                  <h3>Student Information</h3>
+                  <div className="info-grid">
+                    <div><strong>Name:</strong> {extractedData.participant_name || 'N/A'}</div>
+                    <div><strong>Company:</strong> {extractedData.company || 'N/A'}</div>
+                    <div><strong>MHE Type:</strong> {extractedData.mhe_type}</div>
+                    <div><strong>Test Type:</strong> {extractedData.test_type}</div>
+                  </div>
+                </div>
+
+                <h3>Extracted Answers - Click to Edit</h3>
+                <div className="answers-grid">
+                  {getQuestionNumbers().map((questionKey) => (
+                    <div key={questionKey} className="answer-item">
+                      <label>Q{questionKey}:</label>
+                      <select
+                        value={editedAnswers[questionKey] || ''}
+                        onChange={(e) => handleAnswerChange(questionKey, e.target.value)}
+                        className="answer-select"
+                      >
+                        <option value="TRUE">TRUE</option>
+                        <option value="FALSE">FALSE</option>
+                        <option value="Don't Know">Don't Know</option>
+                        <option value="BLANK">BLANK</option>
+                        {questionKey === '20' && extractedData.mhe_type === 'FORKLIFT' && (
+                          <option value="BALANCE">BALANCE</option>
+                        )}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="button-group">
+                  <button 
+                    onClick={handleSubmitWithCorrections} 
+                    disabled={loading} 
+                    className="btn btn-primary"
+                  >
+                    {loading ? 'Grading...' : 'Submit & Grade Test'}
+                  </button>
+                  <button onClick={handleReset} className="btn btn-secondary">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {result && (
           <div className="results-section">
             <div className="results-header">
               <h2>📊 Grading Results - {result.mhe_type}</h2>
@@ -173,10 +286,6 @@ const App: React.FC = () => {
                 <div className="info-value">{result.mhe_type}</div>
               </div>
               <div className="info-card">
-                <div className="info-label">Test Type</div>
-                <div className="info-value">{result.test_type}</div>
-              </div>
-              <div className="info-card">
                 <div className="info-label">Marks</div>
                 <div className="info-value score">{result.total_marks_obtained} / {result.total_marks}</div>
               </div>
@@ -189,10 +298,6 @@ const App: React.FC = () => {
                 <div className={`info-value ${result.grade === 'Pass' ? 'grade-pass' : 'grade-fail'}`}>
                   {result.grade}
                 </div>
-              </div>
-              <div className="info-card">
-                <div className="info-label">Date</div>
-                <div className="info-value">{result.date}</div>
               </div>
             </div>
 
@@ -208,7 +313,7 @@ const App: React.FC = () => {
             </div>
 
             <div className="answers-section">
-              <h3>Detailed Answer Review (20 Questions - 1 Mark Each)</h3>
+              <h3>Detailed Answer Review ({result.total_marks} Questions - 1 Mark Each)</h3>
               <table className="answers-table">
                 <thead>
                   <tr>
@@ -224,12 +329,12 @@ const App: React.FC = () => {
                     <tr key={detail.question_number} className={detail.is_correct ? 'correct' : 'incorrect'}>
                       <td>{detail.question_number}</td>
                       <td className="answer">
-                        <span className={`answer-badge ${detail.student_answer.toLowerCase().replace(/'/g, '').replace(/ /g, '-')}`}>
+                        <span className={`answer-badge ${String(detail.student_answer).toLowerCase().replace(/'/g, '').replace(/ /g, '-')}`}>
                           {detail.student_answer}
                         </span>
                       </td>
                       <td className="answer">
-                        <span className={`answer-badge ${detail.correct_answer.toLowerCase()}`}>
+                        <span className={`answer-badge ${String(detail.correct_answer).toLowerCase()}`}>
                           {detail.correct_answer}
                         </span>
                       </td>
