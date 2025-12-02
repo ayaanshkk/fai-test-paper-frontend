@@ -2,6 +2,7 @@
   "name": "test-grading-frontend",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -18,8 +19,5 @@
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.2.2",
     "vite": "^5.0.8"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
