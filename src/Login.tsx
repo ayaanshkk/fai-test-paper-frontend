@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { authAPI, handleAPIError } from './lib/api';
 
 interface LoginProps {
   onLoginSuccess: (token: string, user: any) => void;
@@ -27,20 +27,15 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setError(null);
 
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/login', {
-        username: formData.username,
-        password: formData.password
-      });
-
-      const { access_token, user } = response.data;
+      const response = await authAPI.login(formData.username, formData.password);
       
-      // Store token in localStorage
-      localStorage.setItem('token', access_token);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Store token and user info
+      localStorage.setItem('access_token', response.access_token);
+      localStorage.setItem('user', JSON.stringify(response.user));
       
-      onLoginSuccess(access_token, user);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
+      onLoginSuccess(response.access_token, response.user);
+    } catch (err) {
+      setError(handleAPIError(err));
     } finally {
       setLoading(false);
     }
