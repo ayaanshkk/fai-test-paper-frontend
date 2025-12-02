@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Login from './Login';
 
 interface QuestionDetail {
   question_number: string | number;
@@ -11,6 +12,7 @@ interface QuestionDetail {
 }
 
 interface GradingResult {
+  id?: number;
   participant_name: string;
   company: string;
   date: string;
@@ -23,6 +25,7 @@ interface GradingResult {
   percentage: number;
   grade: string;
   details: QuestionDetail[];
+  created_at?: string;
 }
 
 interface ExtractedData {
@@ -38,6 +41,10 @@ interface ExtractedData {
 }
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -48,6 +55,42 @@ const App: React.FC = () => {
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [showReview, setShowReview] = useState(false);
   const [editedAnswers, setEditedAnswers] = useState<Record<string, string>>({});
+
+  // Check for existing token on mount
+  useEffect(() => {
+    const savedToken = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    
+    if (savedToken && savedUser) {
+      setToken(savedToken);
+      setUser(JSON.parse(savedUser));
+      setIsAuthenticated(true);
+      
+      // Set default axios header
+      axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+    }
+  }, []);
+
+  const handleLoginSuccess = (accessToken: string, userData: any) => {
+    setToken(accessToken);
+    setUser(userData);
+    setIsAuthenticated(true);
+    
+    // Set default axios header
+    axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
+    delete axios.defaults.headers.common['Authorization'];
+    
+    // Reset all states
+    handleReset();
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -84,7 +127,12 @@ const App: React.FC = () => {
       setEditedAnswers(response.data.answers);
       setShowReview(true);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Error extracting answers');
+      if (err.response?.status === 401) {
+        handleLogout();
+        setError('Session expired. Please login again.');
+      } else {
+        setError(err.response?.data?.detail || 'Error extracting answers');
+      }
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -113,7 +161,12 @@ const App: React.FC = () => {
       setResult(response.data);
       setShowReview(false);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Error grading test');
+      if (err.response?.status === 401) {
+        handleLogout();
+        setError('Session expired. Please login again.');
+      } else {
+        setError(err.response?.data?.detail || 'Error grading test');
+      }
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -132,7 +185,6 @@ const App: React.FC = () => {
   const getQuestionNumbers = () => {
     if (!extractedData) return [];
     return Object.keys(extractedData.answers).sort((a, b) => {
-      // Sort properly: 1a, 1b, 1c, 1d, 1e, 2, 3...
       const aNum = parseInt(a.replace(/[^0-9]/g, ''));
       const bNum = parseInt(b.replace(/[^0-9]/g, ''));
       if (aNum !== bNum) return aNum - bNum;
@@ -140,11 +192,29 @@ const App: React.FC = () => {
     });
   };
 
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="app">
       <header className="header">
-        <h1>🎓 MHE Test Grading System</h1>
-        <p>Automated grading with manual review for Forklift Academy tests</p>
+        <div className="header-content">
+          <div className="header-left">
+            <img src="/fai-logo.png" alt="Forklift Academy of India" className="header-logo" />
+            <div>
+              <h1>MHE Test Grading System</h1>
+              <p>Automated grading with manual review for Forklift Academy tests</p>
+            </div>
+          </div>
+          <div className="user-section">
+            <span className="user-name">👤 {user?.full_name || user?.username}</span>
+            <button onClick={handleLogout} className="btn btn-secondary btn-small">
+              Logout
+            </button>
+          </div>
+        </div>
       </header>
 
       <div className="container">
