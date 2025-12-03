@@ -58,7 +58,7 @@ const App: React.FC = () => {
 
   // Check for existing token on mount
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
+    const savedToken = localStorage.getItem('access_token');
     const savedUser = localStorage.getItem('user');
     
     if (savedToken && savedUser) {
@@ -81,7 +81,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
@@ -207,7 +207,6 @@ const App: React.FC = () => {
             <img src="/fai-logo.png" alt="Forklift Academy of India" className="header-logo" />
             <div>
               <h1>MHE Test Grading System</h1>
-              <p>Automated grading with manual review for Forklift Academy tests</p>
             </div>
           </div>
           <div className="user-section">
