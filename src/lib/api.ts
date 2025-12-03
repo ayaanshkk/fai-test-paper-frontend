@@ -6,7 +6,9 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
 // API Configuration
-const API_BASE_URL = (import.meta.env as any)?.VITE_API_URL || 'http://localhost:8000';
+// Development: http://localhost:8000
+// Production: https://fai-test-paper-backend.onrender.com
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://fai-test-paper-backend.onrender.com';
 
 // Create axios instance with default config
 const apiClient: AxiosInstance = axios.create({

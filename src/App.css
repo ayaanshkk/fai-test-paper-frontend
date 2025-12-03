@@ -1099,17 +1099,17 @@ body {
 .review-header {
   text-align: center;
   padding-bottom: 20px;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid #FFD700;
 }
 
 .review-header h2 {
-  color: #1e293b;
+  color: #000000;
   font-size: 1.8rem;
   margin-bottom: 10px;
 }
 
-.review-header p {
-  color: #64748b;
+.review-subtitle {
+  color: #666666;
   font-size: 1rem;
 }
 
@@ -1119,15 +1119,15 @@ body {
   gap: 30px;
 }
 
-.image-panel, .answers-panel {
-  background: #f8fafc;
+.image-panel, .review-panel, .answers-panel {
+  background: #fffef5;
   padding: 20px;
   border-radius: 12px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid #FFD700;
 }
 
-.image-panel h3, .answers-panel h3 {
-  color: #1e293b;
+.image-panel h3, .review-panel h3, .answers-panel h3 {
+  color: #000000;
   font-size: 1.2rem;
   margin-bottom: 15px;
 }
@@ -1138,7 +1138,7 @@ body {
   max-height: 800px;
   object-fit: contain;
   border-radius: 8px;
-  border: 2px solid #cbd5e1;
+  border: 2px solid #FFD700;
 }
 
 .info-section {
@@ -1146,10 +1146,11 @@ body {
   padding: 15px;
   border-radius: 8px;
   margin-bottom: 20px;
+  border: 1px solid #FFD700;
 }
 
 .info-section h3 {
-  color: #1e293b;
+  color: #000000;
   font-size: 1.1rem;
   margin-bottom: 10px;
 }
@@ -1162,8 +1163,49 @@ body {
 }
 
 .info-grid div {
-  color: #475569;
+  color: #333333;
   font-size: 0.95rem;
+}
+
+.info-grid strong {
+  color: #000000;
+  font-weight: 600;
+}
+
+.info-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.info-card {
+  background: linear-gradient(135deg, #fffef5 0%, #fff8dc 100%);
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid #FFD700;
+  text-align: center;
+}
+
+.info-card label {
+  font-size: 0.9rem;
+  color: #666666;
+  margin-bottom: 8px;
+  font-weight: 500;
+  display: block;
+}
+
+.info-value {
+  font-size: 1.2rem;
+  color: #000000;
+  font-weight: 700;
+}
+
+.review-panel h3 {
+  color: #000000;
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+  margin-top: 20px;
 }
 
 .answers-grid {
@@ -1186,13 +1228,13 @@ body {
 
 .answer-item label {
   font-weight: 600;
-  color: #1e293b;
+  color: #000000;
   font-size: 0.9rem;
 }
 
 .answer-select {
   padding: 8px;
-  border: 2px solid #cbd5e1;
+  border: 2px solid #FFD700;
   border-radius: 6px;
   font-size: 0.9rem;
   background: white;
@@ -1201,13 +1243,14 @@ body {
 }
 
 .answer-select:hover {
-  border-color: #667eea;
+  border-color: #FFC700;
+  background: #fffef5;
 }
 
 .answer-select:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #000000;
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
 }
 
 /* Results Section Styles */
